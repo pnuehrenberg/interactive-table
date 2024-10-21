@@ -1,21 +1,16 @@
 from contextlib import contextmanager
 
-import ipyvuetify as v
 import numpy as np
 import pandas as pd
 
+from .v_autocomplete import Autocomplete
 
-class SelectionFilter(v.Autocomplete):
-    def __init__(
-        self, values, *, callbacks=None, label="", no_data_text="No matches found"
-    ):
+
+class SelectionFilter(Autocomplete):
+    def __init__(self, values, *, callbacks=None, label=""):
         super().__init__(
             v_model=[],
-            chips=True,
-            clearable=True,
-            multiple=True,
             label=label,
-            no_data_text=no_data_text,
         )
         self.callbacks = None
         self._values = None
@@ -43,13 +38,11 @@ class SelectionFilter(v.Autocomplete):
 
     @value.setter
     def value(self, value):
-        value = [v for v in value if v in self.values]
+        value = [_value for _value in value if _value in self.values]
         value = tuple(value)
         if value == self.value:
             return
-        if len(value) == 0:
-            print("resetting")
-        self.v_model = list(value)
+        super().v_model = list(value)
 
     def reset(self):
         self.value = []

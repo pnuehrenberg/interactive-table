@@ -1,4 +1,3 @@
-from ast import Str
 import ipyvuetify as v
 import lazyfilter
 import pandas as pd
@@ -53,7 +52,7 @@ class _DataFrameFilter(v.ExpansionPanels, lazyfilter.DataFrameFilter):
 
     def activate_dependent(self, filter):
         super().activate_dependent(filter)
-        self.panels[id(filter)].checked = filter.is_active
+        self.panels[id(filter)].checked = filter.is_filtering
 
     @traitlets.observe("description", type="mutation")
     def _description_change(self, change):

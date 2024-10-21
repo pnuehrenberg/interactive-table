@@ -2,8 +2,9 @@ import ipyvuetify as v
 import pandas as pd
 
 from .v_bounded_float_field import BoundedFloatField
-from .v_dataframe_filter import lazy_filter, _DataFrameFilter
+from .v_dataframe_filter import _DataFrameFilter, lazy_filter
 from .v_dialog import Dialog
+from .v_autocomplete import Autocomplete
 
 
 class EditDialog(Dialog):
@@ -12,10 +13,8 @@ class EditDialog(Dialog):
         table_display,
         *,
         open_dialog_button,
-        filter_dependencies=None,
         submit_callbacks=None,
     ):
-        self.filter_dependencies = filter_dependencies
         self.table_display = table_display
         self.row_data = None
         self.strict = v.Switch(v_model=True, label="strict", class_="pa-4")
@@ -102,14 +101,12 @@ class EditDialog(Dialog):
     def get_edit_widgets(self):
         if self.row_data is None:
             return False
-        no_data_text = "No matches found"
-        style = "min-width: 200px; max-width: 200px"
+        style = "width: 200px"
         class_ = "pa-4"
         widgets = []
         lazyfilter = lazy_filter(
             self.table_display,
             track_description=False,
-            dependencies=self.filter_dependencies,
         )
         # make sure that this is actually the monkey patched DataFrameFilter
         assert isinstance(lazyfilter, _DataFrameFilter)
@@ -137,7 +134,7 @@ class EditDialog(Dialog):
                         max=float(options[1]),
                         value=float(value),
                         step=step,
-                        label=f"Insert {column.replace("_", " ")}",
+                        label=f"Insert {column_name}",
                         class_=class_,
                         style_=style,
                     )
@@ -146,7 +143,7 @@ class EditDialog(Dialog):
                         v_model=value,
                         attributes={"step": step},
                         type="number",
-                        label=f"Insert {column.replace("_", " ")}",
+                        label=f"Insert {column_name}",
                         class_=class_,
                         style_=style,
                     )
@@ -154,20 +151,19 @@ class EditDialog(Dialog):
                 if self.strict.v_model or isinstance(
                     filter.values.dtype, pd.CategoricalDtype
                 ):
-                    widget = v.Autocomplete(
+                    widget = Autocomplete(
                         v_model=value,
-                        items=list(options),
-                        clearable=False,
+                        chips=False,
                         multiple=False,
-                        label=f"Insert {column.replace("_", " ")}",
-                        no_data_text=no_data_text,
+                        items=list(options),
+                        label=f"Insert {column_name}",
                         class_=class_,
                         style_=style,
                     )
                 else:
                     widget = v.TextField(
                         v_model=value,
-                        label=f"Insert {column.replace("_", " ")}",
+                        label=f"Insert {column_name}",
                         class_=class_,
                         style_=style,
                     )

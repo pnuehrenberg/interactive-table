@@ -16,7 +16,7 @@ class TableApp(ContentWithSidebar):
             dependencies=filter_dependencies,
             track_description=True,
             callbacks=[lambda df: self.table_display._set_items(index=df.index)],
-            class_="pa-4",
+            class_="pa-0",
         )
         self.filters = v.Col(
             children=[
@@ -59,7 +59,6 @@ class TableApp(ContentWithSidebar):
 
         self.row_edit = EditDialog(
             self.table_display,
-            filter_dependencies=filter_dependencies,
             open_dialog_button=self.edit_button,
             submit_callbacks=[lambda: self.lazyfilter.update({})],
         )
@@ -85,7 +84,7 @@ class TableApp(ContentWithSidebar):
         buttons = v.Html(  # type: ignore
             tag="div",
             class_="d-flex flex-column justify-start",
-            children=[self.filter_button, self.row_edit],
+            children=[self.filter_button, self.edit_button],
         )
         return ContentWithSidebar(
             sidebar_content=[buttons, self.filters],

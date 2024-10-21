@@ -1,6 +1,5 @@
 import ipyvuetify as v
 import pandas as pd
-
 from lazyfilter.utils import HasValidDataframe
 
 

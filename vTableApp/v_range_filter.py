@@ -1,10 +1,10 @@
-from contextlib import contextmanager
 from collections.abc import Iterable
+from contextlib import contextmanager
 
 import ipyvuetify as v
 import numpy as np
-from numpy.typing import NDArray
 import traitlets
+from numpy.typing import NDArray
 
 from .v_verbose_range_slider import VerboseRangeSlider
 

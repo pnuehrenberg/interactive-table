@@ -5,7 +5,7 @@ https://python-spectate.readthedocs.io/en/latest/usage/spectate-in-traitlets.htm
 
 from spectate import mvc
 from traitlets import TraitType
-import traitlets
+
 
 class Mutable(TraitType):
     """A base class for mutable traits using Spectate"""

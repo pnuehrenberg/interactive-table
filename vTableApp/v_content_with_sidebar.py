@@ -52,7 +52,11 @@ class ContentWithSidebar(v.Container):
         if change["new"] == change["old"]:
             return
         if self.sidebar.style_ is None:
-            width = self.expanded_sidebar_width if not self.expanded else self.mini_sidebar_width
+            width = (
+                self.expanded_sidebar_width
+                if not self.expanded
+                else self.mini_sidebar_width
+            )
             self.sidebar.style_ = f"max-width: {width}"
         if self.toggle_callbacks is not None:
             for callback in self.toggle_callbacks:
