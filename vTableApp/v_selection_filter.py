@@ -9,13 +9,13 @@ from .v_autocomplete import Autocomplete
 class SelectionFilter(Autocomplete):
     def __init__(self, values, *, callbacks=None, label=""):
         super().__init__(
-            v_model=[],
+            selection=[],
             label=label,
         )
         self.callbacks = None
         self._values = None
         self.values = values
-        self.observe(self._invoke_callbacks, names="v_model")
+        self.observe(self._invoke_callbacks, names="selection")
         self.callbacks = callbacks
 
     @property
@@ -34,7 +34,7 @@ class SelectionFilter(Autocomplete):
 
     @property
     def value(self):
-        return tuple(self.v_model)
+        return tuple(self.selection)
 
     @value.setter
     def value(self, value):
@@ -42,7 +42,7 @@ class SelectionFilter(Autocomplete):
         value = tuple(value)
         if value == self.value:
             return
-        super().v_model = list(value)
+        self.selection = list(value)
 
     def reset(self):
         self.value = []

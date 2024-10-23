@@ -1,10 +1,29 @@
 import ipyvuetify as v
+import numpy as np
 import pandas as pd
 
-from .v_bounded_float_field import BoundedFloatField
+from .v_autocomplete import Autocomplete
+from .v_bounded_number_field import BoundedNumberField
 from .v_dataframe_filter import _DataFrameFilter, lazy_filter
 from .v_dialog import Dialog
-from .v_autocomplete import Autocomplete
+
+
+def _get_widget_value(widget):
+    if isinstance(widget, BoundedNumberField):
+        return widget.value
+    if isinstance(widget, Autocomplete):
+        return widget.selection
+    return widget.v_model
+
+
+def _set_widget_value(widget, value):
+    if isinstance(widget, BoundedNumberField):
+        widget.value = float(value)
+        return
+    if isinstance(widget, Autocomplete):
+        widget.selection = value
+        return
+    widget.v_model = value
 
 
 class EditDialog(Dialog):
@@ -49,6 +68,11 @@ class EditDialog(Dialog):
         self.confirm_button.on_event("click", self.submit)
 
     def get_values(self, *, from_data=False, lazyfilter=None):
+        def to_scalar(value):
+            if isinstance(value, np.generic):
+                return value.item()
+            return value
+
         def row_data_value(column):
             if self.row_data is None:
                 raise ValueError("no row data available")
@@ -63,11 +87,7 @@ class EditDialog(Dialog):
             for column, widget in zip(
                 [pd.Index] + list(self.row_data.keys()), self.fields_layout.children
             ):
-                values[column] = (
-                    widget.value
-                    if isinstance(widget, BoundedFloatField)
-                    else widget.v_model
-                )
+                values[column] = _get_widget_value(widget)
             if lazyfilter is not None:
                 for column, entry_type, options, _ in list(
                     lazyfilter.description.values()
@@ -80,20 +100,17 @@ class EditDialog(Dialog):
                     ):
                         value = row_data_value(column)
                     values[column] = value
-            return values
-        for column in [pd.Index] + list(self.row_data.keys()):
-            values[column] = row_data_value(column)
+        else:
+            for column in [pd.Index] + list(self.row_data.keys()):
+                values[column] = row_data_value(column)
+        for column, value in values.items():
+            values[column] = to_scalar(value)
         return values
 
     def undo(self, *args):
         values = self.get_values(from_data=True)
         for widget, value in zip(self.fields_layout.children, values.values()):
-            if isinstance(widget, BoundedFloatField):
-                # this is a bit hacky, but sometimes an error rule can prevent setting value directly
-                widget.value = widget.min
-                widget.value = float(value)
-            else:
-                widget.v_model = value
+            _set_widget_value(widget, value)
 
     def close_edit_widgets(self):
         self.fields_layout.children = []
@@ -116,7 +133,7 @@ class EditDialog(Dialog):
             filter = lazyfilter.get(column, filter_type=entry_type)
             column_name = lazyfilter.column_name(filter)
             if column == pd.Index:
-                widget = BoundedFloatField(
+                widget = BoundedNumberField(
                     min=float(options[0]),
                     max=float(options[1]),
                     value=float(value),
@@ -129,11 +146,12 @@ class EditDialog(Dialog):
             elif entry_type == "value_range":
                 step = lazyfilter.panels[id(filter)].children[1].children[0].step
                 if self.strict.v_model:
-                    widget = BoundedFloatField(
+                    widget = BoundedNumberField(
                         min=float(options[0]),
                         max=float(options[1]),
                         value=float(value),
                         step=step,
+                        validate_step=False,
                         label=f"Insert {column_name}",
                         class_=class_,
                         style_=style,
@@ -152,7 +170,7 @@ class EditDialog(Dialog):
                     filter.values.dtype, pd.CategoricalDtype
                 ):
                     widget = Autocomplete(
-                        v_model=value,
+                        selection=value,
                         chips=False,
                         multiple=False,
                         items=list(options),

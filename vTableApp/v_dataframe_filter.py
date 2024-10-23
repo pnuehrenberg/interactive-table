@@ -41,6 +41,7 @@ class _DataFrameFilter(v.ExpansionPanels, lazyfilter.DataFrameFilter):
         widget = CheckableExpansionPanel(
             title=column_name.capitalize(),
             content=[filter_widget],
+            reset_callbacks=[filter_widget.reset, filter.reset],
         )
         self.panels[id(filter)] = widget
         self.children = list(self.children) + [widget]
@@ -50,18 +51,32 @@ class _DataFrameFilter(v.ExpansionPanels, lazyfilter.DataFrameFilter):
         self.describe(filter)
         self.callbacks = callbacks
 
-    def activate_dependent(self, filter):
-        super().activate_dependent(filter)
-        self.panels[id(filter)].checked = filter.is_filtering
+    def _set_checked(self, filter):
+        widget = self.panels[id(filter)].children[1].children[0]
+        if not filter.is_active:
+            self.panels[id(filter)].checked = False
+            return
+        is_filtering = True
+        if filter.filter_type == "quantile_range" and filter.value == (0, 1):
+            is_filtering = False
+        if filter.filter_type == "value_range" and filter.value == (widget.min, widget.max):
+            is_filtering = False
+        if filter.filter_type == "selected_values" and (value := filter.value) is not None and len(value) == 0:
+            is_filtering = False
+        self.panels[id(filter)].checked = is_filtering
 
     @traitlets.observe("description", type="mutation")
     def _description_change(self, change):
         for key in change["new"]:
-            column, filter_type, options, selection = change["new"][key]
-            filter = self.get(column, filter_type=filter_type)
+            column, filter_type, options, value = change["new"][key]
+            filter = self.get(column)
             widget = self.panels[id(filter)].children[1].children[0]
-            widget.values = filter.values
-            widget.value = selection
+            widget.values = options # filter.values  # check values property for both widget types
+            if filter.is_active:
+                widget.value = value # filter.value
+            else:
+                widget.reset()
+            self._set_checked(filter)
         if self.callbacks is None:
             return
         filtered_dataframe = self.apply(track_description=False)

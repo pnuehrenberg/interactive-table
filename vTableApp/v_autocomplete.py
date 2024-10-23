@@ -3,7 +3,7 @@ import traitlets
 
 
 class Autocomplete(v.VuetifyTemplate):  # type: ignore
-    v_model = traitlets.Any().tag(sync=True)
+    selection = traitlets.Any().tag(sync=True)
     search = traitlets.Any().tag(sync=True)
     items = traitlets.List().tag(sync=True)
     chips = traitlets.Bool(default_value=True).tag(sync=True)
@@ -17,7 +17,7 @@ class Autocomplete(v.VuetifyTemplate):  # type: ignore
         return """
 <template>
   <v-autocomplete
-    v-model="v_model"
+    v-model.sync="selection"
     :class="class_"
     :style="style_"
     :search-input.sync="search"

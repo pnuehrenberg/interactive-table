@@ -23,14 +23,15 @@ class RangeFilter(v.Col):
     ):
         self.callbacks = None
         self.float_step = float_step
-        self._value_range_slider = VerboseRangeSlider(min=0, max=1, step=1)
+        self._value_range_slider = VerboseRangeSlider(
+            min=0, max=1, step=1, round_to_step=False,
+        )
         self._quantile_range_slider = VerboseRangeSlider(
-            min=0, max=1, step=self.float_step
+            min=0, max=1, step=self.float_step, round_to_step=False,
         )
         super().__init__()
+        self._window = None
         self._values = None
-        self.values = values
-        self._value_range_slider.value = (self.min, self.max)
         self._window = v.Window(
             children=[
                 v.WindowItem(children=[self._value_range_slider]),
@@ -38,6 +39,8 @@ class RangeFilter(v.Col):
             ],
             v_model=0,
         )
+        self.values = values
+        # self._value_range_slider.value = (self.min, self.max)
         self._switch = v.Switch(v_model=0, label="Quantile range", class_="px-3")
         self.allow_quantile_range_filter = allow_quantile_range_filter
         self._enable_sliders()
@@ -103,6 +106,9 @@ class RangeFilter(v.Col):
     def values(self, values):
         values = np.asarray(values)
         self._values = values
+        self.step = (
+            1 if np.issubdtype(np.asarray(values).dtype, int) else self.float_step
+        )
         _min = np.min(self.values)
         _max = np.max(self.values)
         if _min > self.max:
@@ -111,9 +117,6 @@ class RangeFilter(v.Col):
         else:
             self.min = _min
             self.max = _max
-        self.step = (
-            1 if np.issubdtype(np.asarray(values).dtype, int) else self.float_step
-        )
         value = self._value_range_slider.value
         with self.block_callbacks():
             self._value_range_slider.value = (
@@ -123,6 +126,8 @@ class RangeFilter(v.Col):
 
     @property
     def value(self):
+        if self._window is None:
+            raise ValueError("not initialized")
         if self._window.v_model == 0:
             return tuple(self._value_range_slider.value)
         return tuple(self._quantile_range_slider.value)
@@ -131,6 +136,8 @@ class RangeFilter(v.Col):
     def value(self, value):
         value = tuple(value)
         if value == self.value:
+            return
+        if self._window is None:
             return
         if self._window.v_model == 0:
             self._value_range_slider.value = value
@@ -154,6 +161,8 @@ class RangeFilter(v.Col):
 
     def _invoke_callbacks(self, *args):
         if self.callbacks is None:
+            return
+        if self._window is None:
             return
         range_type = "value_range" if self._window.v_model == 0 else "quantile_range"
         for callback in self.callbacks:

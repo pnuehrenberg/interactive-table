@@ -60,7 +60,10 @@ class TableApp(ContentWithSidebar):
         self.row_edit = EditDialog(
             self.table_display,
             open_dialog_button=self.edit_button,
-            submit_callbacks=[lambda: self.lazyfilter.update({})],
+            submit_callbacks=[
+                self._update_filters_on_edit
+                # lambda: self.lazyfilter.update({}, validate_selection=True)
+            ],
         )
         self.fullscreen = Dialog(
             open_dialog_button=self.fullscreen_button,
@@ -70,6 +73,13 @@ class TableApp(ContentWithSidebar):
         self.buttons.children = [self.filter_button, self.row_edit, self.fullscreen]
 
         self.table_display.table.observe(self._set_row_edit_data, "v_model")
+
+    def _update_filters_on_edit(self):
+        selection = {
+            value[0]: (value[1], value[3])
+            for value in self.lazyfilter.description.values()
+        }
+        self.lazyfilter.update(selection, validate_selection=True, reset_on_error=True)
 
     def _set_row_edit_data(self, change):
         row_data = change["new"]
