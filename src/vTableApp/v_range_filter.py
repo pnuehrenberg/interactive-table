@@ -6,7 +6,7 @@ import numpy as np
 import traitlets
 from numpy.typing import NDArray
 
-from .v_verbose_range_slider import VerboseRangeSlider
+from .v_bounded_slider import BoundedSlider
 
 
 class RangeFilter(v.Col):
@@ -23,11 +23,15 @@ class RangeFilter(v.Col):
     ):
         self.callbacks = None
         self.float_step = float_step
-        self._value_range_slider = VerboseRangeSlider(
-            min=0, max=1, step=1, round_to_step=False,
+        self._value_range_slider = BoundedSlider(
+            min=0,
+            max=1,
+            step=1,
         )
-        self._quantile_range_slider = VerboseRangeSlider(
-            min=0, max=1, step=self.float_step, round_to_step=False,
+        self._quantile_range_slider = BoundedSlider(
+            min=0,
+            max=1,
+            step=self.float_step,
         )
         super().__init__()
         self._window = None
@@ -49,13 +53,9 @@ class RangeFilter(v.Col):
             (self._window, "v_model"),
             transform=(lambda v: int(v), lambda v: bool(v)),
         )
-        self._value_range_slider._slider.observe(
-            self._invoke_callbacks, names="v_model"
-        )
+        self._value_range_slider.observe(self._invoke_callbacks, names="temp_range")
         self._window.observe(self._invoke_callbacks, names="v_model")
-        self._quantile_range_slider._slider.observe(
-            self._invoke_callbacks, names="v_model"
-        )
+        self._quantile_range_slider.observe(self._invoke_callbacks, names="temp_range")
         self.callbacks = callbacks
 
     def _enable_sliders(self):

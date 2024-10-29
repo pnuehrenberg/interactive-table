@@ -59,9 +59,16 @@ class _DataFrameFilter(v.ExpansionPanels, lazyfilter.DataFrameFilter):
         is_filtering = True
         if filter.filter_type == "quantile_range" and filter.value == (0, 1):
             is_filtering = False
-        if filter.filter_type == "value_range" and filter.value == (widget.min, widget.max):
+        if filter.filter_type == "value_range" and filter.value == (
+            widget.min,
+            widget.max,
+        ):
             is_filtering = False
-        if filter.filter_type == "selected_values" and (value := filter.value) is not None and len(value) == 0:
+        if (
+            filter.filter_type == "selected_values"
+            and (value := filter.value) is not None
+            and len(value) == 0
+        ):
             is_filtering = False
         self.panels[id(filter)].checked = is_filtering
 
@@ -71,9 +78,11 @@ class _DataFrameFilter(v.ExpansionPanels, lazyfilter.DataFrameFilter):
             column, filter_type, options, value = change["new"][key]
             filter = self.get(column)
             widget = self.panels[id(filter)].children[1].children[0]
-            widget.values = options # filter.values  # check values property for both widget types
+            widget.values = (
+                options  # filter.values  # check values property for both widget types
+            )
             if filter.is_active:
-                widget.value = value # filter.value
+                widget.value = value  # filter.value
             else:
                 widget.reset()
             self._set_checked(filter)

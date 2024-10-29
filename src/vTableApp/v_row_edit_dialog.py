@@ -3,13 +3,13 @@ import numpy as np
 import pandas as pd
 
 from .v_autocomplete import Autocomplete
-from .v_bounded_number_field import BoundedNumberField
+from .v_bounded_input import BoundedInput
 from .v_dataframe_filter import _DataFrameFilter, lazy_filter
 from .v_dialog import Dialog
 
 
 def _get_widget_value(widget):
-    if isinstance(widget, BoundedNumberField):
+    if isinstance(widget, BoundedInput):
         return widget.value
     if isinstance(widget, Autocomplete):
         return widget.selection
@@ -17,7 +17,7 @@ def _get_widget_value(widget):
 
 
 def _set_widget_value(widget, value):
-    if isinstance(widget, BoundedNumberField):
+    if isinstance(widget, BoundedInput):
         widget.value = float(value)
         return
     if isinstance(widget, Autocomplete):
@@ -133,7 +133,7 @@ class EditDialog(Dialog):
             filter = lazyfilter.get(column, filter_type=entry_type)
             column_name = lazyfilter.column_name(filter)
             if column == pd.Index:
-                widget = BoundedNumberField(
+                widget = BoundedInput(
                     min=float(options[0]),
                     max=float(options[1]),
                     value=float(value),
@@ -146,12 +146,11 @@ class EditDialog(Dialog):
             elif entry_type == "value_range":
                 step = lazyfilter.panels[id(filter)].children[1].children[0].step
                 if self.strict.v_model:
-                    widget = BoundedNumberField(
+                    widget = BoundedInput(
                         min=float(options[0]),
                         max=float(options[1]),
                         value=float(value),
                         step=step,
-                        validate_step=False,
                         label=f"Insert {column_name}",
                         class_=class_,
                         style_=style,

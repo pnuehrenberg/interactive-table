@@ -1,14 +1,11 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=60", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "vTableApp"
 version = "0.0.1"
 dependencies = ["numpy>=2.0", "pandas", "ipyvuetify"]
-
-[tool.setuptools.packages.find]
-include = ["vTableApp"]
 
 [tool.pyright]
 venvPath = "/home/paul/miniforge3/envs"
