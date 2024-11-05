@@ -3,13 +3,14 @@ import ipywidgets as widgets
 import traitlets
 
 
-class Dialog(v.VuetifyTemplate):  # type: ignore
+class Menu(v.VuetifyTemplate):  # type: ignore
     title = traitlets.Unicode().tag(sync=True)
-    dialog = traitlets.Bool().tag(sync=True)
+    menu = traitlets.Bool().tag(sync=True)
     fullscreen = traitlets.Bool().tag(sync=True)
 
     open_button = traitlets.Unicode().tag(sync=True)
     open_button_icon = traitlets.Bool().tag(sync=True)
+    open_button_class = traitlets.Unicode().tag(sync=True)
 
     confirm_button = traitlets.Unicode().tag(sync=True)
     confirm_button_icon = traitlets.Bool().tag(sync=True)
@@ -25,14 +26,14 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
         open_button,
         title="",
         open_button_icon=False,
+        open_button_class="ma-2",
         confirm_button="mdi-check",
         confirm_button_icon=True,
         close_button="mdi-close",
         close_button_icon=True,
         content=None,
         actions=None,
-        fullscreen=False,
-        open_dialog_on_init=False,
+        open_menu_on_init=False,
         on_open_callbacks=None,
         on_submit_callbacks=None,
         on_close_callbacks=None,
@@ -46,8 +47,7 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
         self.close_button_icon = close_button_icon
         self.content = [] if content is None else content
         self.actions = [] if actions is None else actions
-        self.fullscreen = fullscreen
-        self.dialog = open_dialog_on_init
+        self.menu = open_menu_on_init
         self.on_open_callbacks = [] if on_open_callbacks is None else on_open_callbacks
         self.on_submit_callbacks = (
             [] if on_submit_callbacks is None else on_submit_callbacks
@@ -65,35 +65,33 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
                 return False
         return True
 
-    @traitlets.observe("dialog")
-    def _on_dialog_change(self, change):
+    @traitlets.observe("menu")
+    def _on_menu_change(self, change):
         if change["old"] == change["new"]:
             return
-        if not self.dialog:
+        if not self.menu:
             self._invoke_callbacks(self.on_close_callbacks)
         else:
             self._invoke_callbacks(self.on_open_callbacks)
 
     def vue_confirm(self, *args):
         self._invoke_callbacks(self.on_submit_callbacks)
-        self.dialog = False
+        self.menu = False
 
     @traitlets.default("template")
     def _template(self):
         return """
             <template>
-                <v-dialog
-                    v-model="dialog"
-                    :fullscreen="fullscreen"
-                    width="unset"
-                    max-width="800px"
+                <v-menu
+                    v-model="menu"
+                    :close-on-content-click="false"
                     >
                     <template v-slot:activator="{ on, attrs }">
                         <v-btn
                             :icon="open_button_icon"
                             v-bind="attrs"
                             v-on="on"
-                            class="ma-2"
+                            :class="open_button_class"
                             >
                             <v-icon v-if="open_button_icon">{{ open_button }}</v-icon>
                             <div v-else>
@@ -110,7 +108,7 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
                             <v-btn
                                 v-if="close_button"
                                 :icon="close_button_icon"
-                                @click="dialog = false"
+                                @click="menu = false"
                                 >
                                 <v-icon v-if="close_button_icon">{{ close_button }}</v-icon>
                                 <div v-else>
@@ -136,6 +134,6 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
                             </v-btn>
                         </v-card-actions>
                     </v-card>
-                </v-dialog>
+                </v-menu>
             </template>
             """

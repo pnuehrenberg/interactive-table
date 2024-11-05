@@ -20,6 +20,7 @@ class RangeFilter(v.Col):
         callbacks=None,
         allow_quantile_range_filter=True,
         float_step=1e-3,
+        class_="ma-0 pa-0",
     ):
         self.callbacks = None
         self.float_step = float_step
@@ -27,44 +28,52 @@ class RangeFilter(v.Col):
             min=0,
             max=1,
             step=1,
+            class_="d-flex flex-column",
+            style_="width: 100%",
         )
         self._quantile_range_slider = BoundedSlider(
             min=0,
             max=1,
             step=self.float_step,
+            class_="d-flex flex-column",
+            style_="width: 100%",
         )
-        super().__init__()
-        self._window = None
+        super().__init__(class_=class_)
         self._values = None
-        self._window = v.Window(
-            children=[
-                v.WindowItem(children=[self._value_range_slider]),
-                v.WindowItem(children=[self._quantile_range_slider]),
-            ],
-            v_model=0,
-        )
         self.values = values
         # self._value_range_slider.value = (self.min, self.max)
-        self._switch = v.Switch(v_model=0, label="Quantile range", class_="px-3")
+        self._switch = v.Switch(
+            v_model=0,
+            label="Quantile range",
+            hide_details=True,
+            class_="pa-0 ma-0 mb-2",
+        )
         self.allow_quantile_range_filter = allow_quantile_range_filter
         self._enable_sliders()
-        traitlets.link(
-            (self._switch, "v_model"),
-            (self._window, "v_model"),
-            transform=(lambda v: int(v), lambda v: bool(v)),
-        )
+        self._switch.observe(self._set_sliders, names="v_model")
         self._value_range_slider.observe(self._invoke_callbacks, names="temp_range")
-        self._window.observe(self._invoke_callbacks, names="v_model")
         self._quantile_range_slider.observe(self._invoke_callbacks, names="temp_range")
         self.callbacks = callbacks
 
+    def _set_sliders(self, change):
+        active_slider = (
+            self._value_range_slider if not self._switch.v_model
+            else self._quantile_range_slider
+        )
+        self.children = [self._switch, active_slider]
+        self._invoke_callbacks()
+
     def _enable_sliders(self):
         if self.allow_quantile_range_filter:
-            self.children = [self._switch, self._window]
+            active_slider = (
+                self._value_range_slider if not self._switch.v_model
+                else self._quantile_range_slider
+            )
+            self.children = [self._switch, active_slider]
         else:
             if self._switch.v_model:
                 self._switch.v_model = False
-            self.children = [self._window]
+            self.children = [self._value_range_slider]
 
     @traitlets.observe("allow_quantile_range_filter")
     def _on_allow_quantile_range_filter_change(self, change):
@@ -126,9 +135,7 @@ class RangeFilter(v.Col):
 
     @property
     def value(self):
-        if self._window is None:
-            raise ValueError("not initialized")
-        if self._window.v_model == 0:
+        if not self.allow_quantile_range_filter or not self._switch.v_model:
             return tuple(self._value_range_slider.value)
         return tuple(self._quantile_range_slider.value)
 
@@ -137,9 +144,7 @@ class RangeFilter(v.Col):
         value = tuple(value)
         if value == self.value:
             return
-        if self._window is None:
-            return
-        if self._window.v_model == 0:
+        if not self.allow_quantile_range_filter or not self._switch.v_model:
             self._value_range_slider.value = value
             return
         self._quantile_range_slider.value = value
@@ -162,8 +167,10 @@ class RangeFilter(v.Col):
     def _invoke_callbacks(self, *args):
         if self.callbacks is None:
             return
-        if self._window is None:
-            return
-        range_type = "value_range" if self._window.v_model == 0 else "quantile_range"
+        range_type = (
+            "value_range"
+            if not self.allow_quantile_range_filter or not self._switch.v_model
+            else "quantile_range"
+        )
         for callback in self.callbacks:
             callback((range_type, self.value))
