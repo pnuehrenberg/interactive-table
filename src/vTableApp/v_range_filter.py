@@ -21,6 +21,7 @@ class RangeFilter(v.Col):
         allow_quantile_range_filter=True,
         float_step=1e-3,
         class_="ma-0 pa-0",
+        style_="",
     ):
         self.callbacks = None
         self.float_step = float_step
@@ -38,7 +39,7 @@ class RangeFilter(v.Col):
             class_="d-flex flex-column",
             style_="width: 100%",
         )
-        super().__init__(class_=class_)
+        super().__init__(class_=class_, style_=style_)
         self._values = None
         self.values = values
         # self._value_range_slider.value = (self.min, self.max)
@@ -56,17 +57,21 @@ class RangeFilter(v.Col):
         self.callbacks = callbacks
 
     def _set_sliders(self, change):
+        if change["new"] == change["old"]:
+            return
         active_slider = (
-            self._value_range_slider if not self._switch.v_model
+            self._value_range_slider
+            if not self._switch.v_model
             else self._quantile_range_slider
         )
         self.children = [self._switch, active_slider]
-        self._invoke_callbacks()
+        self._invoke_callbacks(change)
 
     def _enable_sliders(self):
         if self.allow_quantile_range_filter:
             active_slider = (
-                self._value_range_slider if not self._switch.v_model
+                self._value_range_slider
+                if not self._switch.v_model
                 else self._quantile_range_slider
             )
             self.children = [self._switch, active_slider]
@@ -149,9 +154,18 @@ class RangeFilter(v.Col):
             return
         self._quantile_range_slider.value = value
 
+    @property
+    def is_active(self):
+        if not self._switch.v_model:
+            return self._value_range_slider.value != (self.min, self.max)
+        else:
+            return self._quantile_range_slider.value != (0, 1)
+
     def reset(self):
-        self._value_range_slider.value = (self.min, self.max)
-        self._quantile_range_slider.value = (0, 1)
+        if not self._switch.v_model:
+            self._value_range_slider.value = (self.min, self.max)
+        else:
+            self._quantile_range_slider.value = (0, 1)
 
     @contextmanager
     def block_callbacks(self):
@@ -164,7 +178,9 @@ class RangeFilter(v.Col):
         finally:
             self.callbacks = _callbacks
 
-    def _invoke_callbacks(self, *args):
+    def _invoke_callbacks(self, change):
+        if change["old"] == change["new"]:
+            return
         if self.callbacks is None:
             return
         range_type = (

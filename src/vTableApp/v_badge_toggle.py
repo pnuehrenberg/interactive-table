@@ -1,8 +1,9 @@
-import ipywidgets as widgets
 import ipyvuetify as v
+import ipywidgets as widgets
 import traitlets
 
-class BadgeToggle(v.VuetifyTemplate):
+
+class BadgeToggle(v.VuetifyTemplate):  # type: ignore
     active = traitlets.Bool().tag(sync=True)
     content = traitlets.Any().tag(sync=True, **widgets.widget_serialization)
 
@@ -14,13 +15,13 @@ class BadgeToggle(v.VuetifyTemplate):
                 <v-badge
                     class="ma-2"
                     :value="active"
-                    icon="mdi-close"
+                    :icon="hover ? 'mdi-close' : 'mdi-check'"
                     style="cursor: pointer"
-                    :color="hover ? 'red' : 'red lighten-2'"
-                    overlap
-                    @click.native="on_badge_click"
+                    :color="hover ? 'primary' : 'primary lighten-2'"
+                    inline
+                    @click.native.stop="active = false"
                     >
-                    <jupyter-widget :widget="content" @click.native.stop="on_content_click"/>
+                    <jupyter-widget :widget="content" @click.native.stop/>
                 </v-badge>
             </v-hover>
         </v-template>
@@ -30,13 +31,13 @@ class BadgeToggle(v.VuetifyTemplate):
         self,
         *,
         content,
-        on_badge_click_callbacks=None,
-        on_content_click_callbacks=None,
+        on_activate_callbacks=None,
+        on_deactivate_callbacks=None,
     ):
         self.active = False
         self.content = content
-        self.on_badge_click_callbacks = on_badge_click_callbacks
-        self.on_content_click_callbacks = on_content_click_callbacks
+        self.on_activate_callbacks = on_activate_callbacks
+        self.on_deactivate_callbacks = on_deactivate_callbacks
         super().__init__()
 
     def _invoke_callbacks(self, callbacks):
@@ -47,12 +48,11 @@ class BadgeToggle(v.VuetifyTemplate):
                 return False
         return True
 
-    def set_active(self, active):
-        self.active = active
-        return True
-
-    def vue_on_badge_click(self, data):
-        self._invoke_callbacks(self.on_badge_click_callbacks)
-
-    def vue_on_content_click(self, data):
-        self._invoke_callbacks(self.on_content_click_callbacks)
+    @traitlets.observe("active")
+    def _on_active_change(self, change):
+        if change["old"] == change["new"]:
+            return
+        if self.active:
+            self._invoke_callbacks(self.on_activate_callbacks)
+        else:
+            self._invoke_callbacks(self.on_deactivate_callbacks)

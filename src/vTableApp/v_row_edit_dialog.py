@@ -8,6 +8,26 @@ from .v_dataframe_filter import _DataFrameFilter, lazy_filter
 from .v_dialog import Dialog
 
 
+def cast(value, dtype):
+    try:
+        if dtype == "bool":
+            value = str(value).lower() == "true"
+        elif dtype == "int":
+            value = int(value)
+        elif dtype == "float":
+            value = float(value)
+        elif dtype == "O":
+            value = str(value)
+        elif isinstance(dtype, pd.CategoricalDtype):
+            categories = dtype.categories
+            value, _ = cast(value, categories.dtype)
+            if value not in categories:
+                dtype = pd.CategoricalDtype(list(categories) + [value])
+    except ValueError:
+        raise ValueError("Unsupported type")
+    return value, dtype
+
+
 def _get_widget_value(widget):
     if isinstance(widget, BoundedInput):
         return widget.value
@@ -31,41 +51,51 @@ class EditDialog(Dialog):
         self,
         table_display,
         *,
-        open_dialog_button,
         submit_callbacks=None,
     ):
+        if submit_callbacks is None:
+            submit_callbacks = []
         self.table_display = table_display
-        self.row_data = None
-        self.strict = v.Switch(v_model=True, label="strict", class_="pa-4")
+        self._row_data = None
+        self.strict = v.Switch(
+            v_model=True, label="strict", hide_details=True, class_="pa-0 pl-2 ma-0"
+        )
         self.undo_button = v.Btn(
-            icon=True, children=[v.Icon(children=["mdi-undo-variant"])], class_="mx-4"
+            icon=True, children=[v.Icon(children=["mdi-undo-variant"])]
         )
-        self.confirm_button = v.Btn(
-            icon=True, children=[v.Icon(children=["mdi-check"])], class_="ma-4"
+        self.placeholder = v.Layout(
+            children=["No row selected"],
+            class_="d-flex align-center justify-center",
+            style_="min-width: 400px; min-height: 100px",
         )
-        self.fields_layout = v.Layout(class_="d-flex wrap pa-2", children=[])
+        self.fields_layout = v.Layout(
+            class_="d-flex wrap ma-2", children=[self.placeholder]
+        )
         super().__init__(
-            open_dialog_button=open_dialog_button,
+            open_button="mdi-pencil",
+            open_button_icon=True,
             fullscreen=False,
             title="Edit row values",
-            content=[
-                self.fields_layout,
-                v.CardActions(
-                    children=[
-                        self.strict,
-                        v.Spacer(),
-                        self.undo_button,
-                        self.confirm_button,
-                    ],
-                ),
-            ],
-            open_callbacks=[self.get_edit_widgets],
-            close_callbacks=[self.close_edit_widgets],
+            content=[self.fields_layout],
+            actions=[self.strict, v.Spacer(), self.undo_button],
+            on_submit_callbacks=[self.submit] + submit_callbacks,
         )
-        self.submit_callbacks = submit_callbacks
         self.strict.observe(lambda *args: self.get_edit_widgets(), "v_model")
         self.undo_button.on_event("click", self.undo)
-        self.confirm_button.on_event("click", self.submit)
+
+    @property
+    def row_data(self):
+        return self._row_data
+
+    @row_data.setter
+    def row_data(self, row_data):
+        if row_data is None and self.row_data is None:
+            return
+        self._row_data = row_data
+        if row_data is not None:
+            self.get_edit_widgets(copy_widget_data=False)
+        else:
+            self.close_edit_widgets()
 
     def get_values(self, *, from_data=False, lazyfilter=None):
         def to_scalar(value):
@@ -83,7 +113,7 @@ class EditDialog(Dialog):
         if self.row_data is None:
             raise ValueError("no row data available")
         values = {}
-        if len(self.fields_layout.children) > 0 and not from_data:
+        if len(self.fields_layout.children) > 1 and not from_data:
             for column, widget in zip(
                 [pd.Index] + list(self.row_data.keys()), self.fields_layout.children
             ):
@@ -108,18 +138,21 @@ class EditDialog(Dialog):
         return values
 
     def undo(self, *args):
+        if self.row_data is None:
+            return
         values = self.get_values(from_data=True)
         for widget, value in zip(self.fields_layout.children, values.values()):
             _set_widget_value(widget, value)
 
     def close_edit_widgets(self):
-        self.fields_layout.children = []
+        self.fields_layout.children = [self.placeholder]
+        return True
 
-    def get_edit_widgets(self):
+    def get_edit_widgets(self, *, copy_widget_data=True):
         if self.row_data is None:
             return False
-        style = "width: 200px"
-        class_ = "pa-4"
+        style = "min-width: 180px; max-width: 180px"
+        class_ = "ma-2"
         widgets = []
         lazyfilter = lazy_filter(
             self.table_display,
@@ -127,7 +160,7 @@ class EditDialog(Dialog):
         )
         # make sure that this is actually the monkey patched DataFrameFilter
         assert isinstance(lazyfilter, _DataFrameFilter)
-        values = self.get_values(lazyfilter=lazyfilter)
+        values = self.get_values(from_data=not copy_widget_data, lazyfilter=lazyfilter)
         for column, entry_type, options, _ in list(lazyfilter.description.values()):
             value = values[column]
             filter = lazyfilter.get(column, filter_type=entry_type)
@@ -144,14 +177,14 @@ class EditDialog(Dialog):
                     style_=style,
                 )
             elif entry_type == "value_range":
-                step = lazyfilter.panels[id(filter)].children[1].children[0].step
+                step = lazyfilter.widgets[filter].content.content[0].step
                 if self.strict.v_model:
                     widget = BoundedInput(
                         min=float(options[0]),
                         max=float(options[1]),
                         value=float(value),
                         step=step,
-                        label=f"Insert {column_name}",
+                        label=column_name.capitalize(),
                         class_=class_,
                         style_=style,
                     )
@@ -160,27 +193,25 @@ class EditDialog(Dialog):
                         v_model=value,
                         attributes={"step": step},
                         type="number",
-                        label=f"Insert {column_name}",
+                        label=column_name.capitalize(),
                         class_=class_,
                         style_=style,
                     )
             elif entry_type == "selected_values":
-                if self.strict.v_model or isinstance(
-                    filter.values.dtype, pd.CategoricalDtype
-                ):
+                if self.strict.v_model:
                     widget = Autocomplete(
                         selection=value,
                         chips=False,
                         multiple=False,
                         items=list(options),
-                        label=f"Insert {column_name}",
+                        label=column_name.capitalize(),
                         class_=class_,
                         style_=style,
                     )
                 else:
                     widget = v.TextField(
                         v_model=value,
-                        label=f"Insert {column_name}",
+                        label=column_name.capitalize(),
                         class_=class_,
                         style_=style,
                     )
@@ -196,18 +227,15 @@ class EditDialog(Dialog):
         for column, value in values.items():
             if column == pd.Index:
                 continue
-            column_data = self.table_display.dataframe[column].astype(type(value))
-            try:
-                column_data.loc[row_idx] = value
-                self.table_display.dataframe.loc[:, column] = column_data.astype(
-                    self.table_display.dataframe[column].dtype
-                )
-            except Exception as e:
-                print(f"error setting {value} to {column}")
-                print(e)
+            dtype = self.table_display.dataframe[column].dtype
+            value, dtype_cast = cast(value, dtype)
+            if dtype == dtype_cast:
+                self.table_display.dataframe.loc[row_idx, column] = value
+            else:
+                self.table_display.dataframe[column] = self.table_display.dataframe[
+                    column
+                ].astype(dtype_cast)
+                self.table_display.dataframe.loc[row_idx, column] = value
         self.table_display._set_items(index=self.table_display.current_index)
         self.row_data = self.table_display.dataframe.loc[row_idx]
-        self._close_dialog()
-        if self.submit_callbacks is not None:
-            for callback in self.submit_callbacks:
-                callback()
+        return True

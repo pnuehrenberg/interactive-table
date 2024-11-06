@@ -41,6 +41,7 @@ class Menu(v.VuetifyTemplate):  # type: ignore
         self.title = title
         self.open_button = open_button
         self.open_button_icon = open_button_icon
+        self.open_button_class = open_button_class
         self.confirm_button = confirm_button
         self.confirm_button_icon = confirm_button_icon
         self.close_button = close_button
@@ -83,6 +84,9 @@ class Menu(v.VuetifyTemplate):  # type: ignore
         return """
             <template>
                 <v-menu
+                    transition="slide-y-transition"
+                    bottom
+                    offset-y="true"
                     v-model="menu"
                     :close-on-content-click="false"
                     >

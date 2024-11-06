@@ -1,16 +1,19 @@
 from contextlib import contextmanager
 
 import numpy as np
-import pandas as pd
 
 from .v_autocomplete import Autocomplete
 
 
 class SelectionFilter(Autocomplete):
-    def __init__(self, values, *, callbacks=None, label=""):
+    def __init__(
+        self, values, *, callbacks=None, label="", class_="ma-0 pa-0", style_=""
+    ):
         super().__init__(
             selection=[],
             label=label,
+            class_=class_,
+            style_=style_,
         )
         self.callbacks = None
         self._values = None
@@ -24,12 +27,10 @@ class SelectionFilter(Autocomplete):
 
     @values.setter
     def values(self, values):
-        if isinstance(values, pd.Series) and isinstance(
-            values.dtype, pd.CategoricalDtype
-        ):
-            unique_values = np.asarray(values.dtype.categories)
-        else:
-            unique_values = np.unique(values)
+        # if np.isdtype(np.asarray(values).dtype, "bool"):
+        #     unique_values = np.asarray([True, False])
+        # else:
+        unique_values = np.unique(values)
         self.items = unique_values.tolist()
 
     @property
@@ -43,6 +44,10 @@ class SelectionFilter(Autocomplete):
         if value == self.value:
             return
         self.selection = list(value)
+
+    @property
+    def is_active(self):
+        return len(self.value) > 0
 
     def reset(self):
         self.value = []
