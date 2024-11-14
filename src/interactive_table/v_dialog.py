@@ -10,6 +10,7 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
 
     open_button = traitlets.Unicode().tag(sync=True)
     open_button_icon = traitlets.Bool().tag(sync=True)
+    open_button_class = traitlets.Unicode(default_value="ma-2").tag(sync=True)
 
     confirm_button = traitlets.Unicode().tag(sync=True)
     confirm_button_icon = traitlets.Bool().tag(sync=True)
@@ -17,6 +18,7 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
     close_button = traitlets.Unicode().tag(sync=True)
     close_button_icon = traitlets.Bool().tag(sync=True)
 
+    show_actions = traitlets.Bool(default_value=True).tag(sync=True)
     content = traitlets.List().tag(sync=True, **widgets.widget_serialization)
     actions = traitlets.List().tag(sync=True, **widgets.widget_serialization)
 
@@ -78,6 +80,16 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
         self._invoke_callbacks(self.on_submit_callbacks)
         self.dialog = False
 
+    def show(self):
+        if "d-none" not in self.open_button_class:
+            return
+        self.open_button_class = self.open_button_class.replace("d-none", "")
+
+    def hide(self):
+        if "d-none" in self.open_button_class:
+            return
+        self.open_button_class = f"d-none {self.open_button_class}"
+
     @traitlets.default("template")
     def _template(self):
         return """
@@ -88,12 +100,12 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
                     width="unset"
                     max-width="800px"
                     >
-                    <template v-slot:activator="{ on, attrs }">
+                    <template v-if="open_button" v-slot:activator="{ on, attrs }">
                         <v-btn
                             :icon="open_button_icon"
                             v-bind="attrs"
                             v-on="on"
-                            class="ma-2"
+                            :class="open_button_class"
                             >
                             <v-icon v-if="open_button_icon">{{ open_button }}</v-icon>
                             <div v-else>
@@ -121,7 +133,7 @@ class Dialog(v.VuetifyTemplate):  # type: ignore
                         <v-divider v-if="content.length > 0"></v-divider>
                         <jupyter-widget v-for="item in content" :widget="item" />
                         <v-divider v-if="confirm_button || actions.length > 0"></v-divider>
-                        <v-card-actions v-if="confirm_button || actions.length > 0" class="d-flex flex-row pa-4">
+                        <v-card-actions v-show="show_actions && (confirm_button || actions.length > 0)" class="pa-4">
                             <jupyter-widget v-for="item in actions" :widget="item" class="pa-2 align-self-center"/>
                             <v-btn
                                 v-if="confirm_button"

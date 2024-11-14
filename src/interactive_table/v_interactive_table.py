@@ -57,7 +57,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
     show_filter_snackbar = traitlets.Bool().tag(sync=True)
     filter_snackbar_timeout = traitlets.Int().tag(sync=True)
     fullscreen_icon = traitlets.Unicode().tag(sync=True)
-    fullscreen = traitlets.Any().tag(sync=True, **widgets.widget_serialization)
+    action_dialogs = traitlets.List().tag(sync=True, **widgets.widget_serialization)
 
     @traitlets.default("template")
     def _template(self):
@@ -121,10 +121,38 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                     <v-btn text color="primary" @click="apply_filters">Yes</v-btn>
                 </v-snackbar>
 
+                <jupyter-widget v-for="dialog in action_dialogs" :widget="dialog" />
+
             </v-template>
             """
 
+    def vue_action_click(self, args):
+        item, action_name = args
+        self.actions[action_name](item)
+
     def _generate_input_slot_template(self, column_name):
+        if column_name == "actions":
+            return f"""
+            <template v-slot:item.{column_name}="props">
+                <div class="d-inline-flex flex-row flex-nowrap align-self-start">
+                    {
+                        '\n'.join(
+                            [
+                                f"""
+                                <v-btn
+                                    icon
+                                    @click.native.stop="action_click([props.item, '{action_name}'])"
+                                    >
+                                    <v-icon>{action_name}</v-icon>
+                                </v-btn>
+                                """
+                                for action_name in self.actions
+                            ]
+                        )
+                    }
+                </div>
+            </template>
+            """
         dtype, topts = parse_dtype(self.dataframe, column_name)
         text_field = f"""
             <v-text-field
@@ -180,14 +208,19 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         data_table,
         dataframe,
         *,
-        filter_dependencies=None,
-        show_index=True,
+        filter_dependencies,
+        show_index,
+        show_actions,
+        actions,
+        action_dialogs,
     ):
         self._data_table = data_table
         self.fullscreen_icon = "mdi-fullscreen"
+        self.actions = {} if actions is None else actions
+        self.action_dialogs = [] if action_dialogs is None else action_dialogs
         self.dataframe = dataframe
         self.selected = []
-        self._set_headers()
+        self._set_headers(show_index=show_index, show_actions=show_actions)
         self._set_items()
         self.lazyfilter = lazy_filter(
             self,
@@ -202,7 +235,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         ]
         for header_item in self.headers:
             column_name = header_item["value"]
-            if column_name == "index":
+            if column_name in ["index", "actions"]:
                 continue
 
             def validation_func(value, column_name=column_name):
@@ -235,13 +268,15 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                 self.input_error = "Input must be numeric."
         return True
 
-    def _set_headers(self, *, show_index=True):
+    def _set_headers(self, *, show_index, show_actions):
         headers = [
             {"text": column.replace("_", " ").capitalize(), "value": column}
             for column in self.dataframe
         ]
         if show_index:
             headers = [{"text": "Index", "value": "index"}] + headers
+        if show_actions and len(self.actions) > 0:
+            headers.append({"text": "Actions", "value": "actions", "sortable": False})  # type: ignore
         self.headers = headers
 
     @property
@@ -252,7 +287,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         if index is None:
             index = self.dataframe.index
         return [
-            {"index": idx, **item}
+            {"index": idx, **item, "actions": None}
             for idx, item in zip(
                 index, self.dataframe.loc[index].to_dict(orient="records")
             )
@@ -270,7 +305,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
             row = {}
             index = new_item["index"]
             for column_name, value in new_item.items():
-                if column_name == "index":
+                if column_name in ["index", "actions"]:
                     continue
                 try:
                     row[column_name], dtype = cast(
@@ -323,14 +358,26 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         self._data_table.toggle_fullscreen()
 
 
-class DataTable(v.Col):
-    def __init__(self, dataframe, *, filter_dependencies=None, show_index=True):
+class InteractiveTable(v.Col):
+    def __init__(
+        self,
+        dataframe,
+        *,
+        filter_dependencies=None,
+        show_index=True,
+        show_actions=True,
+        actions=None,
+        action_dialogs=None,
+    ):
         self.fullscreen = False
         self.display = _TableDisplay(
             self,
             dataframe,
             filter_dependencies=filter_dependencies,
             show_index=show_index,
+            show_actions=show_actions,
+            actions=actions,
+            action_dialogs=action_dialogs,
         )
         self.content = v.Card(
             children=[v.Sheet(class_="pa-4", children=[self.display])]
