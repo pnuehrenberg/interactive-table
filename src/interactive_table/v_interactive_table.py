@@ -5,7 +5,7 @@ import pandas as pd
 import traitlets
 from lazyfilter.utils import HasValidDataframe
 
-from vTableApp.v_dataframe_filter import _DataFrameFilter, lazy_filter
+from .v_dataframe_filter import _DataFrameFilter, lazy_filter
 
 
 def cast(value, dtype):
@@ -189,7 +189,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                 >
                     <v-hover v-slot="{{ hover }}">
                         <div :class="hover ? 'primary--text' : ''">
-                            {{{{ props.item.{column_name} }}}}
+                            {f"{{{{ props.item.{column_name} }}}}" if not topts["float"] else f"{{{{ props.item.{column_name}.toFixed(3) }}}}"}
                         </div>
                     </v-hover>
                     <template v-slot:input>
