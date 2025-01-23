@@ -5,7 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "interactive_table"
 version = "0.0.1"
-dependencies = ["numpy>=2.0", "pandas", "ipyvuetify"]
+dependencies = [
+	"numpy>=2.0",
+	"pandas",
+	"ipyvuetify",
+	"observation-library @ git+ssh://git@github.com/pnuehrenberg/lazyfilter.git",
+]
 
 [tool.pyright]
 venvPath = "/home/paul/miniforge3/envs"
