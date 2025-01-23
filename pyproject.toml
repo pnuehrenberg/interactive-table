@@ -9,6 +9,7 @@ dependencies = [
 	"numpy>=2.0",
 	"pandas",
 	"ipyvuetify",
+	"spectate",
 	"lazyfilter @ git+ssh://git@github.com/pnuehrenberg/lazyfilter.git",
 ]
 
