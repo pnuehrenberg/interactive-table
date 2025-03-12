@@ -31,8 +31,8 @@ def cast(value, dtype):
 def parse_dtype(dataframe, column_name):
     dtype = dataframe[column_name].dtype
     is_bool = dtype == "bool"
-    is_int = dtype == "int"
-    is_float = dtype == "float"
+    is_int = "int" in str(dtype)
+    is_float = "float" in str(dtype)
     is_categorical = isinstance(dtype, pd.CategoricalDtype)
     is_string = dtype == "O"
     if sum(map(int, [is_bool, is_int, is_float, is_categorical, is_string])) != 1:
@@ -271,7 +271,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
     def _set_headers(self, *, show_index, show_actions):
         headers = [
             {"text": column.replace("_", " ").capitalize(), "value": column}
-            for column in self.dataframe
+            for column in self.dataframe.columns
         ]
         if show_index:
             headers = [{"text": "Index", "value": "index"}] + headers
