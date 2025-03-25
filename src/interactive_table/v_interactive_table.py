@@ -59,6 +59,10 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
     fullscreen_icon = traitlets.Unicode().tag(sync=True)
     action_dialogs = traitlets.List().tag(sync=True, **widgets.widget_serialization)
 
+    editable = traitlets.Bool().tag(sync=True)
+    filterable = traitlets.Bool().tag(sync=True)
+    allow_fullscreen = traitlets.Bool().tag(sync=True)
+
     @traitlets.default("template")
     def _template(self):
         return f"""
@@ -83,7 +87,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                             ]
                         )
                     }
-                    <template slot="header" :headers="headers">
+                    <template v-if="filterable" slot="header" :headers="headers">
                         <tr>
                             <th v-for="(header, index) in headers"
                                 :key="header.value">
@@ -92,7 +96,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                         </tr>
                     </template>
 
-                    <template v-slot:footer>
+                    <template v-if="allow_fullscreen" v-slot:footer>
                         <v-btn
                             fab
                             icon
@@ -131,6 +135,17 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         self.actions[action_name](item)
 
     def _generate_input_slot_template(self, column_name):
+        dtype, topts = parse_dtype(self.dataframe, column_name)
+        if not self.editable:
+            return f"""
+                <template v-slot:item.{column_name}="props">
+                    <v-hover v-slot="{{ hover }}">
+                        <div :class="hover ? 'primary--text' : ''">
+                            {f"{{{{ props.item.{column_name} }}}}" if not topts["float"] else f"{{{{ props.item.{column_name}.toFixed(3) }}}}"}
+                        </div>
+                    </v-hover>
+                </template>
+                """
         if column_name == "actions":
             return f"""
             <template v-slot:item.{column_name}="props">
@@ -153,7 +168,6 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                 </div>
             </template>
             """
-        dtype, topts = parse_dtype(self.dataframe, column_name)
         text_field = f"""
             <v-text-field
                 v-model="props.item.{column_name}"
@@ -213,6 +227,9 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         show_actions,
         actions,
         action_dialogs,
+        editable,
+        filterable,
+        allow_fullscreen,
     ):
         self._data_table = data_table
         self.fullscreen_icon = "mdi-fullscreen"
@@ -249,6 +266,11 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                 self.uniques[column_name] = np.unique(
                     self.dataframe[column_name]
                 ).tolist()
+
+        self.editable = editable
+        self.filterable = filterable
+        self.allow_fullscreen = allow_fullscreen
+
         v.VuetifyTemplate.__init__(self)  # type: ignore
 
     def _validate(self, column_name, value):
@@ -368,6 +390,9 @@ class InteractiveTable(v.Col):
         show_actions=True,
         actions=None,
         action_dialogs=None,
+        editable=True,
+        filterable=True,
+        allow_fullscreen=True,
     ):
         self.fullscreen = False
         self.display = _TableDisplay(
@@ -378,6 +403,9 @@ class InteractiveTable(v.Col):
             show_actions=show_actions,
             actions=actions,
             action_dialogs=action_dialogs,
+            editable=editable,
+            filterable=filterable,
+            allow_fullscreen=allow_fullscreen,
         )
         self.content = v.Card(
             children=[v.Sheet(class_="pa-4", children=[self.display])]
@@ -401,3 +429,21 @@ class InteractiveTable(v.Col):
             self.fullscreen_display.children = []
             self.display.fullscreen_icon = "mdi-fullscreen"
             self.fullscreen_display.v_model = False
+
+
+class Table(InteractiveTable):
+    def __init__(
+        self,
+        dataframe,
+    ):
+        super().__init__(
+            dataframe=dataframe,
+            filter_dependencies=None,
+            show_index=True,
+            show_actions=False,
+            actions=None,
+            action_dialogs=None,
+            editable=False,
+            filterable=False,
+            allow_fullscreen=False,
+        )

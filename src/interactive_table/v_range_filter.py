@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import ipyvuetify as v
 import numpy as np
 import traitlets
-from numpy.typing import NDArray
+
 
 from .v_bounded_slider import BoundedSlider
 
@@ -111,7 +111,7 @@ class RangeFilter(v.Col):
         self._value_range_slider.step = step
 
     @property
-    def values(self) -> NDArray:
+    def values(self) -> np.ndarray:
         if self._values is None:
             raise ValueError("values not initialized")
         return self._values
