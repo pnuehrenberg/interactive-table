@@ -383,6 +383,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
 
 
 class InteractiveTable(v.Col):
+
     def __init__(
         self,
         dataframe,
@@ -418,9 +419,13 @@ class InteractiveTable(v.Col):
             children=[],
         )
         super().__init__(children=[self.display, self.fullscreen_display])
+        self.fullscreen_display.observe(self._sync_fullscreen, names=["v_model"])
 
-    def toggle_fullscreen(self):
-        self.fullscreen = not self.fullscreen
+    def _sync_fullscreen(self, change):
+        self.set_fullscreen(change["new"])
+
+    def set_fullscreen(self, fullscreen):
+        self.fullscreen = fullscreen
         if self.fullscreen:
             self.fullscreen_display.children = [self.content]
             self.display.fullscreen_icon = "mdi-fullscreen-exit"
@@ -431,6 +436,10 @@ class InteractiveTable(v.Col):
             self.fullscreen_display.children = []
             self.display.fullscreen_icon = "mdi-fullscreen"
             self.fullscreen_display.v_model = False
+
+    def toggle_fullscreen(self):
+        self.set_fullscreen(not self.fullscreen)
+
 
 
 class Table(InteractiveTable):
