@@ -5,6 +5,8 @@ import pandas as pd
 import traitlets
 from lazyfilter.utils import HasValidDataframe
 
+from typing import Any
+
 from .v_dataframe_filter import _DataFrameFilter, lazy_filter
 
 
@@ -135,6 +137,28 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         self.actions[action_name](item)
 
     def _generate_input_slot_template(self, column_name):
+        if column_name == "actions":
+            return f"""
+                <template v-slot:item.{column_name}="props">
+                    <div class="d-inline-flex flex-row flex-nowrap align-self-start">
+                        {
+                            '\n'.join(
+                                [
+                                    f"""
+                                    <v-btn
+                                        icon
+                                        @click.native.stop="action_click([props.item, '{action_name}'])"
+                                        >
+                                        <v-icon>{action_name}</v-icon>
+                                    </v-btn>
+                                    """
+                                    for action_name in self.actions
+                                ]
+                            )
+                        }
+                    </div>
+                </template>
+                """
         dtype, topts = parse_dtype(self.dataframe, column_name)
         if not self.editable:
             return f"""
@@ -146,28 +170,6 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                     </v-hover>
                 </template>
                 """
-        if column_name == "actions":
-            return f"""
-            <template v-slot:item.{column_name}="props">
-                <div class="d-inline-flex flex-row flex-nowrap align-self-start">
-                    {
-                        '\n'.join(
-                            [
-                                f"""
-                                <v-btn
-                                    icon
-                                    @click.native.stop="action_click([props.item, '{action_name}'])"
-                                    >
-                                    <v-icon>{action_name}</v-icon>
-                                </v-btn>
-                                """
-                                for action_name in self.actions
-                            ]
-                        )
-                    }
-                </div>
-            </template>
-            """
         text_field = f"""
             <v-text-field
                 v-model="props.item.{column_name}"
@@ -290,15 +292,15 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                 self.input_error = "Input must be numeric."
         return True
 
-    def _set_headers(self, *, show_index, show_actions):
-        headers = [
+    def _set_headers(self, *, show_index: bool, show_actions: bool):
+        headers: list[dict[str, Any]] = [
             {"text": column.replace("_", " ").capitalize(), "value": column}
             for column in self.dataframe.columns
         ]
         if show_index:
             headers = [{"text": "Index", "value": "index"}] + headers
         if show_actions and len(self.actions) > 0:
-            headers.append({"text": "Actions", "value": "actions", "sortable": False})  # type: ignore
+            headers.append({"text": "Actions", "value": "actions", "sortable": False})
         self.headers = headers
 
     @property
