@@ -2,6 +2,7 @@ import ipyvuetify as v
 import ipywidgets as widgets
 import numpy as np
 import pandas as pd
+from spectate.mvc import view
 import traitlets
 from lazyfilter.utils import HasValidDataframe
 
@@ -227,6 +228,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         filter_dependencies,
         show_index,
         show_actions,
+        visible_columns,
         actions,
         action_dialogs,
         editable,
@@ -239,7 +241,7 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         self.action_dialogs = [] if action_dialogs is None else action_dialogs
         self.dataframe = dataframe
         self.selected = []
-        self._set_headers(show_index=show_index, show_actions=show_actions)
+        self._set_headers(show_index=show_index, show_actions=show_actions, visible_columns=visible_columns)
         self._set_items()
         self.lazyfilter = lazy_filter(
             self,
@@ -292,10 +294,23 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                 self.input_error = "Input must be numeric."
         return True
 
-    def _set_headers(self, *, show_index: bool, show_actions: bool):
+    def _set_headers(self, *, show_index: bool, show_actions: bool, visible_columns: list[str] | None):
+        def prepare_header(column):
+            return (
+                column
+                .replace("_min", "(min)")
+                .replace("_s", "(s)")
+                .replace("_", " ")
+                .capitalize()
+            )
+
+        if visible_columns is None:
+            visible_columns = self.dataframe.columns.tolist()
+
         headers: list[dict[str, Any]] = [
-            {"text": column.replace("_", " ").capitalize(), "value": column}
+            {"text": prepare_header(column), "value": column}
             for column in self.dataframe.columns
+            if column in visible_columns
         ]
         if show_index:
             headers = [{"text": "Index", "value": "index"}] + headers
@@ -391,6 +406,7 @@ class InteractiveTable(v.Col):
         filter_dependencies=None,
         show_index=True,
         show_actions=True,
+        visible_columns=None,
         actions=None,
         action_dialogs=None,
         editable=True,
@@ -404,6 +420,7 @@ class InteractiveTable(v.Col):
             filter_dependencies=filter_dependencies,
             show_index=show_index,
             show_actions=show_actions,
+            visible_columns=visible_columns,
             actions=actions,
             action_dialogs=action_dialogs,
             editable=editable,
@@ -452,6 +469,7 @@ class Table(InteractiveTable):
             filter_dependencies=None,
             show_index=True,
             show_actions=False,
+            visible_columns=None,
             actions=None,
             action_dialogs=None,
             editable=False,
