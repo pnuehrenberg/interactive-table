@@ -5,7 +5,6 @@ import ipyvuetify as v
 import numpy as np
 import traitlets
 
-
 from .v_bounded_slider import BoundedSlider
 
 

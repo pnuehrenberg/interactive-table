@@ -1,12 +1,11 @@
+from typing import Any
+
 import ipyvuetify as v
 import ipywidgets as widgets
 import numpy as np
 import pandas as pd
-from spectate.mvc import view
 import traitlets
 from lazyfilter.utils import HasValidDataframe
-
-from typing import Any
 
 from .v_dataframe_filter import _DataFrameFilter, lazy_filter
 
@@ -82,14 +81,14 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                     :items-per-page=10
                     >
                     {
-                        '\n'.join(
-                            [
-                                self._generate_input_slot_template(header_item["value"])
-                                for header_item in self.headers
-                                if header_item["value"] != "index"
-                            ]
-                        )
-                    }
+            "\n".join(
+                [
+                    self._generate_input_slot_template(header_item["value"])
+                    for header_item in self.headers
+                    if header_item["value"] != "index"
+                ]
+            )
+        }
                     <template v-if="filterable" slot="header" :headers="headers">
                         <tr>
                             <th v-for="(header, index) in headers"
@@ -143,9 +142,9 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                 <template v-slot:item.{column_name}="props">
                     <div class="d-inline-flex flex-row flex-nowrap align-self-start">
                         {
-                            '\n'.join(
-                                [
-                                    f"""
+                "\n".join(
+                    [
+                        f"""
                                     <v-btn
                                         icon
                                         @click.native.stop="action_click([props.item, '{action_name}'])"
@@ -153,10 +152,10 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                                         <v-icon>{action_name}</v-icon>
                                     </v-btn>
                                     """
-                                    for action_name in self.actions
-                                ]
-                            )
-                        }
+                        for action_name in self.actions
+                    ]
+                )
+            }
                     </div>
                 </template>
                 """
@@ -241,7 +240,13 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         self.action_dialogs = [] if action_dialogs is None else action_dialogs
         self.dataframe = dataframe
         self.selected = []
-        self._set_headers(show_index=show_index, show_actions=show_actions, visible_columns=visible_columns)
+        if visible_columns is None:
+            visible_columns = self.dataframe.columns.tolist()
+        self._set_headers(
+            show_index=show_index,
+            show_actions=show_actions,
+            visible_columns=visible_columns,
+        )
         self._set_items()
         self.lazyfilter = lazy_filter(
             self,
@@ -252,7 +257,9 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
         assert isinstance(self.lazyfilter, _DataFrameFilter)
         # make sure that this is the monkey-patched data frame filter class
         self.filter_widgets = [
-            self.lazyfilter.widgets[filter] for filter in self.lazyfilter.dependencies
+            self.lazyfilter.widgets[filter]
+            for filter in self.lazyfilter.dependencies
+            if filter.column in [pd.Index] + visible_columns
         ]
         for header_item in self.headers:
             column_name = header_item["value"]
@@ -294,18 +301,16 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
                 self.input_error = "Input must be numeric."
         return True
 
-    def _set_headers(self, *, show_index: bool, show_actions: bool, visible_columns: list[str] | None):
+    def _set_headers(
+        self, *, show_index: bool, show_actions: bool, visible_columns: list[str]
+    ):
         def prepare_header(column):
             return (
-                column
-                .replace("_min", "(min)")
-                .replace("_s", "(s)")
+                column.replace("_min", " (min)")
+                .replace("_s", " (s)")
                 .replace("_", " ")
                 .capitalize()
             )
-
-        if visible_columns is None:
-            visible_columns = self.dataframe.columns.tolist()
 
         headers: list[dict[str, Any]] = [
             {"text": prepare_header(column), "value": column}
@@ -398,7 +403,6 @@ class _TableDisplay(HasValidDataframe, v.VuetifyTemplate):  # type: ignore
 
 
 class InteractiveTable(v.Col):
-
     def __init__(
         self,
         dataframe,
@@ -456,7 +460,6 @@ class InteractiveTable(v.Col):
 
     def toggle_fullscreen(self):
         self.set_fullscreen(not self.fullscreen)
-
 
 
 class Table(InteractiveTable):
