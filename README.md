@@ -3,4 +3,4 @@
 
 # interactive-table
 
-This repository implements an interactive table using custom ipyvuetify widgets for the Jupyter lab environment.
+This repository implements an interactive table using custom ipyvuetify widgets for the JupyterLab environment.
