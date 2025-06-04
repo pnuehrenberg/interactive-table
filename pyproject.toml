@@ -10,7 +10,7 @@ dependencies = [
     "pandas",
     "ipyvuetify",
     "spectate",
-    "lazyfilter @ git+ssh://git@github.com/pnuehrenberg/lazyfilter.git",
+    "lazyfilter @ @ git+https://github.com/pnuehrenberg/lazyfilter.git",
 ]
 requires-python = ">=3.12"
 
